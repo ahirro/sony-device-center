@@ -58,7 +58,7 @@ real hardware.
 | **WF-1000XM6** | V2 | ✅ Verified | Community report |
 | **MDR-1000X** | V1 | ❌ Known broken | Shows as disconnected, no controls work ([#12](../../issues/12)) |
 | **WH-1000XM4** | V1 | ✅ Verified | Community report (firmware 3.0.1, Windows): battery, noise control readback, EQ + Clear Bass, firmware, codec. Speak-to-Chat on/off verified (Standard ~30s timeout; 15s / 1 min / do-not-close UI is a nice-to-have). |
-| **WH-1000XM4C** | V2 | 🟡 Partially verified | Maintainer fork, firmware 1.1.2, Windows: battery, firmware, codec, noise control read/write (type `0x16`), 10-band EQ readback. Audible confirmation and EQ writes pending. Not the same protocol as the WH-1000XM4. |
+| **WH-1000XM4C** | V2 | 🟡 Partially verified | Community report, firmware 1.1.2, Windows: battery, firmware, codec, noise control read/write (type `0x16`), 10-band EQ readback. Noise control and Ambient confirmed audibly; EQ writes pending. Not the same protocol as the WH-1000XM4. |
 | WF-1000XM5, WF-1000XM4 | V2 | 🟡 Untested | TWS battery reporting unverified |
 | WH-CH720N, ULT WEAR, LinkBuds S, WF-C700N | V2 | 🟡 Untested | |
 | WH-XB910N, WH-CH520 | V2 | 🟡 Untested | |

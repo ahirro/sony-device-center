@@ -19,7 +19,7 @@ This document tracks hardware-level verification and protocol capability support
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **WH-1000XM3** | V1 | RFCOMM | Verified | Verified | Verified | N/A (V1) | N/A (V1) | Unknown | SBC, AAC, LDAC, aptX | N/A | N/A | 4.5.2 | Community |
 | **WH-1000XM4** | V1 | RFCOMM | Verified | Verified | Verified | Verified | Not implemented (V1) | Verified | AAC verified | Verified (on/off; Standard ~30s) | Not implemented (V1) | 3.0.1 | Community (Windows) |
-| **WH-1000XM4C** | V2 | RFCOMM | Verified | Partially verified (state change echoed by headset; audible check pending) | Partially verified (as ANC) | Readback verified (10-band, no Clear Bass); writes untested | N/A | Raw query verified (`04 02`); not shown by one-shot `sonyctl info` | AAC (raw query `12 02` = `02`) | Not exposed | Not exposed | 1.1.2 | Maintainer fork (Windows) |
+| **WH-1000XM4C** | V2 | RFCOMM | Verified | Verified (state echoed by headset, audible change confirmed) | Verified (level 10, audible change confirmed) | Readback verified (10-band, no Clear Bass); writes untested | N/A | Raw query verified (`04 02`); not shown by one-shot `sonyctl info` | AAC (raw query `12 02` = `02`) | Not exposed | Not exposed | 1.1.2 | Maintainer fork (Windows) |
 | **WH-1000XM5** | V2 | RFCOMM | Verified | Verified | Verified | Verified | Verified | Verified | SBC, AAC, LDAC | Verified | Verified | 2.3.1 | Core Dev |
 | **WH-1000XM6** | V2 | RFCOMM | Intermittent | Readback unresolved | Readback unresolved | Verified (10-band, no Clear Bass) | Expected | Expected | Expected | Expected | Expected | 3.1.5 | Community ([#44](../../pull/44)) |
 | **WF-1000XM4** | V2 | RFCOMM | Expected (Dual+Case) | Expected | Expected | Expected | Expected | Expected | SBC, AAC, LDAC | Expected | Expected | — | Awaiting HW |
@@ -50,7 +50,7 @@ The XM4C is **not** a WH-1000XM4: Sound Connect reports "v2 Protocol", and the V
 - Equalizer: both `56 00` and `56 04` return `57 <t> <preset> 0a <10 bands>`, neutral = 6. It is treated as the 10-band layout (inquired `0x04`), no Clear Bass.
 - Firmware `04 02` -> `05 02 05 "1.1.2"`; codec `12 02` -> `13 02 02` (AAC). Support-function list `06 00`.
 - Debug helper: `sonyctl raw <hex bytes>` sends a payload and prints every reply frame.
-- Not yet verified on this device: EQ writes, Focus on Voice, anything outside the list above.
+- Verified on hardware (Windows, direct session): `anc on`, `ambient 10`, `anc off` change the audible mode. Not yet verified on this device: EQ writes, Focus on Voice, anything outside the list above.
 
 ### Protocol V2 (e.g. WH-1000XM5, WF-1000XM4/M5, LinkBuds, ULT WEAR)
 - Extended variable-length payload structures.
