@@ -16,6 +16,11 @@ DeviceService::DeviceService(
         const long secs = std::strtol(v, &end, 10);
         if (end != v && secs >= 0 && secs <= 86400) _idleRelease = std::chrono::seconds(secs);
     }
+    if (const char* v = std::getenv("SONY_IDLE_PEEK_SECONDS")) {
+        char* end = nullptr;
+        const long secs = std::strtol(v, &end, 10);
+        if (end != v && secs >= 0 && secs <= 86400) _peekInterval = std::chrono::seconds(secs);
+    }
 }
 
 DeviceService::~DeviceService() {
@@ -137,12 +142,28 @@ void DeviceService::wake() {
 
 void DeviceService::tick() {
     std::lock_guard lock(_mutex);
-    if (_released) return;  // channel intentionally parked; wake() reopens it
+    if (_released) {
+        // Channel intentionally parked; wake() reopens it. A short periodic peek
+        // keeps battery and modes fresh without holding the link.
+        if (_peekInterval.count() > 0 && _now() >= _nextPeek) {
+            _nextPeek = _now() + _peekInterval;
+            try {
+                _connect(transport::DeviceAddress(_selected), _selectedName);
+                _device->release();
+            } catch (const std::exception& ex) {
+                Logger::debug(LogCategory::Device, std::string("Idle peek skipped: ") + ex.what());
+                if (_device) _device->release();
+            }
+            _released = true; _wasConnected = false; _connectionState = "idle";
+        }
+        return;
+    }
     if (isConnected()) {
         if (_idleRelease.count() > 0 && _device && _device->capabilities().singleControlClient &&
             _now() - _lastActivity >= _idleRelease) {
             _device->release();
             _released = true; _wasConnected = false; _connectionState = "idle";
+            _nextPeek = _now() + _peekInterval;
             Logger::info(LogCategory::Device, "Control channel released after idle (single-client headset)");
             return;
         }

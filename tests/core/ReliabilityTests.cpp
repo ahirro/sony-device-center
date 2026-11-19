@@ -293,3 +293,28 @@ TEST_CASE("Headsets that allow several clients are never released", "[core][shar
     CHECK(service.connectionState() == "connected");
     CHECK(transport->attempts.size() == 1);
 }
+
+TEST_CASE("A parked headset is peeked periodically and released again", "[core][share]") {
+    using namespace std::chrono_literals;
+    auto now = DeviceService::Clock::time_point{};
+    auto transport = std::make_shared<ReplyTransport>();
+    DeviceService service(transport, {}, [&] { return now; });
+    service.connect(DeviceAddress("11:22:33:44:55:66"), "WH-1000XM4C");
+    now += 30s; service.tick();
+    REQUIRE(service.connectionState() == "idle");
+    REQUIRE(transport->attempts.size() == 1);
+
+    now += 2min; service.tick();                       // before the 5 min interval
+    CHECK(transport->attempts.size() == 1);
+    now += 4min; service.tick();                       // interval elapsed: one quick peek
+    CHECK(transport->attempts.size() == 2);
+    CHECK(service.connectionState() == "idle");
+    CHECK_FALSE(service.activeDevice()->isConnected());  // released again right away
+    CHECK(service.isConnected());
+
+    // A busy headset (another client holds it) is skipped without error state.
+    transport->failAddress = "11:22:33:44:55:66";
+    now += 6min; service.tick();
+    CHECK(service.connectionState() == "idle");
+    CHECK(service.isConnected());
+}

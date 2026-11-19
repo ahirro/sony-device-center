@@ -44,6 +44,10 @@ private:
     // Idle release (single-control-client headsets only). 0 disables it.
     std::chrono::seconds _idleRelease{15};
     bool _released{false};
+    // While parked, briefly reopen the link now and then to refresh battery and
+    // modes; skipped silently when another client holds the channel.
+    std::chrono::seconds _peekInterval{300};
+    Clock::time_point _nextPeek{};
     Clock::time_point _lastActivity{};
     std::string _selectedName;
     unsigned _retrySeconds{1};

@@ -178,6 +178,11 @@ IpcResponse IpcProtocol::execute(const IpcCommand& cmd, IDeviceService& service)
     try {
         switch (cmd.type) {
         case IpcCommandType::Info: {
+            // One-shot callers never wait for the rotating background refresh, so
+            // gather firmware, codec and optional settings now (V2 only).
+            if (dev->protocolVersion() == SonyProtocolVersion::V2)
+                for (int i = 0; i < 9; ++i) dev->refreshSettingsStep();
+            const auto snap = service.snapshot();
             std::ostringstream oss;
             oss << dev->name() << "\n\n"
                 << "Protocol: " << (dev->protocolVersion() == SonyProtocolVersion::V1 ? "v1" : "v2") << "\n"

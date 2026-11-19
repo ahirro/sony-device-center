@@ -159,6 +159,8 @@ bool DeviceCenterController::hasSpeakToChat() const { return _capabilities.value
 
 bool DeviceCenterController::hasAdaptiveVolume() const { return _capabilities.value("adaptiveVolume").toBool(); }
 
+bool DeviceCenterController::autoPowerOffTwoState() const { return _capabilities.value("autoPowerOffTwoState").toBool(); }
+
 QVariantList DeviceCenterController::pairedDevices() const { return _pairedDevices; }
 
 void DeviceCenterController::setAnc(bool enabled) { _send("anc", {{"enabled",enabled}}); }
@@ -208,7 +210,7 @@ void DeviceCenterController::setAutostart(bool enable) {
             out << "Type=Application\n";
             out << "Name=Sony Device Center\n";
             out << "Comment=Unofficial open-source companion for Sony WH/WF/LinkBuds audio devices\n";
-            out << "Exec=" << QCoreApplication::applicationFilePath() << "\n";
+            out << "Exec=" << QCoreApplication::applicationFilePath() << " --minimized\n";
             out << "Icon=sony-device-center\n";
             out << "Terminal=false\n";
             out << "Categories=Audio;AudioVideo;Settings;\n";
@@ -221,7 +223,7 @@ void DeviceCenterController::setAutostart(bool enable) {
     QSettings bootSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
     if (enable) {
         QString appPath = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
-        bootSettings.setValue("SonyDeviceCenter", "\"" + appPath + "\"");
+        bootSettings.setValue("SonyDeviceCenter", "\"" + appPath + "\" --minimized");
     } else {
         bootSettings.remove("SonyDeviceCenter");
     }

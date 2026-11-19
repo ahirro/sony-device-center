@@ -1,13 +1,19 @@
-#include <QGuiApplication>
+#include <QApplication>
+#include <QCoreApplication>
+#include <QWindow>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QIcon>
 
 #include "DeviceCenterController.h"
+#include "TrayManager.h"
+
+#include <memory>
 
 int main(int argc, char *argv[]) {
-    QGuiApplication app(argc, argv);
+    // QApplication (not QGuiApplication): the tray icon and its menu live in QtWidgets.
+    QApplication app(argc, argv);
 
     // Main.qml customises background/handle/indicator on its controls. The
     // native "Windows" and "macOS" styles Qt picks by default there refuse
@@ -32,6 +38,11 @@ int main(int argc, char *argv[]) {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("controller", &controller);
 
+    // Autostart passes --minimized: start hidden in the tray (only when a tray exists).
+    const bool trayAvailable = sony::devicecenter::TrayManager::available();
+    const bool startMinimized = trayAvailable && QCoreApplication::arguments().contains("--minimized");
+    engine.rootContext()->setContextProperty("startMinimized", startMinimized);
+
     const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
@@ -41,5 +52,13 @@ int main(int argc, char *argv[]) {
 
     engine.load(url);
 
-    return app.exec();
+    std::unique_ptr<sony::devicecenter::TrayManager> tray;
+    if (trayAvailable && !engine.rootObjects().isEmpty()) {
+        tray = std::make_unique<sony::devicecenter::TrayManager>(
+            engine, controller, qobject_cast<QWindow*>(engine.rootObjects().first()));
+    }
+
+    const int result = app.exec();
+    tray.reset();
+    return result;
 }

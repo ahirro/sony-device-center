@@ -62,6 +62,9 @@ struct DeviceCapabilities
     bool adaptiveVolume = false;
 
     bool autoPowerOff = false;
+    // Auto power-off has just two values (index 0 = never, 5 = when taken off)
+    // instead of timer steps. WH-1000XM4C: 28 05 11 00 / 28 05 10 00.
+    bool autoPowerOffTwoState = false;
 
     bool firmwareInfo = false;
     bool codecInfo = false;

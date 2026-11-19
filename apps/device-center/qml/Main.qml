@@ -9,7 +9,7 @@ ApplicationWindow {
     height: 780
     minimumWidth: 980
     minimumHeight: 660
-    visible: true
+    visible: !startMinimized
     title: "Sony Device Center — " + controller.deviceName
     color: bg
 
@@ -1738,15 +1738,20 @@ ApplicationWindow {
                                     id: powerCombo
                                     implicitWidth: 134
                                     implicitHeight: 38
-                                    model: ["Off", "5 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
-                                    currentIndex: controller.featureStatus.autoPowerOff && controller.featureStatus.autoPowerOff.availability === "valid" ? controller.autoPowerOff : -1
+                                    // Two-state headsets (WH-1000XM4C) only know "never" (index 0)
+                                    // and "when taken off" (index 5); the rest use timer steps.
+                                    model: controller.autoPowerOffTwoState ? ["Never", "When taken off"]
+                                         : ["Off", "5 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
+                                    function shownIndex() {
+                                        if (!(controller.featureStatus.autoPowerOff && controller.featureStatus.autoPowerOff.availability === "valid")) return -1
+                                        return controller.autoPowerOffTwoState ? (controller.autoPowerOff === 5 ? 1 : 0) : controller.autoPowerOff
+                                    }
+                                    currentIndex: shownIndex()
                                     Connections {
                                         target: controller
-                                        function onStateChanged() { powerCombo.currentIndex = Qt.binding(function() {
-                                            return controller.featureStatus.autoPowerOff && controller.featureStatus.autoPowerOff.availability === "valid" ? controller.autoPowerOff : -1
-                                        }) }
+                                        function onStateChanged() { powerCombo.currentIndex = Qt.binding(function() { return powerCombo.shownIndex() }) }
                                     }
-                                    onActivated: controller.setAutoPowerOff(index)
+                                    onActivated: controller.setAutoPowerOff(controller.autoPowerOffTwoState ? (index === 1 ? 5 : 0) : index)
 
                                     background: Rectangle {
                                         radius: 11

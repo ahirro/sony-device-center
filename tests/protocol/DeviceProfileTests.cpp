@@ -181,7 +181,9 @@ TEST_CASE("DeviceProfileRegistry scopes noise layouts to verified models", "[pro
         CHECK(xm4c.capabilities.speakToChat);
         CHECK(xm4c.capabilities.speakToChatSubtype == 0x02);
         CHECK_FALSE(xm4c.capabilities.adaptiveVolume);
-        CHECK_FALSE(xm4c.capabilities.autoPowerOff);
+        CHECK(xm4c.capabilities.autoPowerOff);
+        CHECK(xm4c.capabilities.autoPowerOffTwoState);
+        CHECK(xm4c.capabilities.singleControlClient);
     }
     for (auto name : {"WH-1000XM4", "WH-1000XM5", "WF-1000XM5", "Unknown"})
         CHECK(DeviceProfileRegistry::getProfileForDevice(name).capabilities.noiseControlLayout == NoiseControlLayout::Standard);
