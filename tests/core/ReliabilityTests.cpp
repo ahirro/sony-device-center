@@ -229,3 +229,67 @@ TEST_CASE("IPC refuses insecure paths and recovers an owned stale socket", "[cor
     }
 }
 #endif
+
+// WH-1000XM4C accepts one control client at a time (Sound Connect connected as soon
+// as Device Center was closed), so an idle service parks the channel and reopens it
+// on the next command instead of locking the phone app out.
+TEST_CASE("Idle release parks the channel of single-client headsets and wakes on demand", "[core][share]") {
+    using namespace std::chrono_literals;
+    auto now = DeviceService::Clock::time_point{};
+    auto transport = std::make_shared<ReplyTransport>();
+    DeviceService service(transport, {}, [&] { return now; });
+    service.connect(DeviceAddress("11:22:33:44:55:66"), "WH-1000XM4C");
+    REQUIRE(transport->attempts.size() == 1);
+    CHECK(service.connectionState() == "connected");
+
+    now += 10s; service.tick();
+    CHECK(service.connectionState() == "connected");
+    service.wake();                       // activity restarts the idle timer
+    now += 10s; service.tick();
+    CHECK(service.connectionState() == "connected");
+
+    now += 20s; service.tick();
+    CHECK(service.connectionState() == "idle");
+    CHECK(service.isConnected());         // still logically connected for the GUI
+    CHECK_FALSE(service.activeDevice()->isConnected());  // but the link is free
+    const auto snap = JsonProtocol::snapshot(service);
+    CHECK(snap["connected"] == true);
+    CHECK(snap["connectionState"] == "idle");
+    now += 60s; service.tick();           // stays parked, no reconnect storm
+    CHECK(transport->attempts.size() == 1);
+
+    service.wake();
+    CHECK(service.activeDevice()->isConnected());
+    CHECK(service.connectionState() == "connected");
+    CHECK(transport->attempts.size() == 2);
+}
+
+TEST_CASE("Waking a released headset that another client holds reports busy and stays parked", "[core][share]") {
+    using namespace std::chrono_literals;
+    auto now = DeviceService::Clock::time_point{};
+    auto transport = std::make_shared<ReplyTransport>();
+    DeviceService service(transport, {}, [&] { return now; });
+    service.connect(DeviceAddress("11:22:33:44:55:66"), "WH-1000XM4C");
+    now += 30s; service.tick();
+    REQUIRE(service.connectionState() == "idle");
+
+    transport->failAddress = "11:22:33:44:55:66";
+    CHECK_THROWS_AS(service.wake(), SonyException);
+    CHECK(service.connectionState() == "idle");
+    CHECK(service.lastError().find("busy") != std::string::npos);
+
+    transport->failAddress.clear();
+    CHECK_NOTHROW(service.wake());
+    CHECK(service.connectionState() == "connected");
+}
+
+TEST_CASE("Headsets that allow several clients are never released", "[core][share]") {
+    using namespace std::chrono_literals;
+    auto now = DeviceService::Clock::time_point{};
+    auto transport = std::make_shared<ReplyTransport>();
+    DeviceService service(transport, {}, [&] { return now; });
+    service.connect(DeviceAddress("11:22:33:44:55:66"), "WH-1000XM5");
+    now += 10min; service.tick();
+    CHECK(service.connectionState() == "connected");
+    CHECK(transport->attempts.size() == 1);
+}

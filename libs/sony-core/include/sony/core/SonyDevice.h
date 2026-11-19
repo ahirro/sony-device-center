@@ -28,6 +28,9 @@ public:
 
     void connect(const transport::DeviceAddress& address, std::string_view deviceName = "");
     void disconnect() noexcept;
+    // Free the Bluetooth control channel for another client while keeping the
+    // cached state valid (unlike disconnect(), which marks features stale).
+    void release() noexcept;
 
     [[nodiscard]] bool isConnected() const noexcept;
     [[nodiscard]] SonyProtocolVersion protocolVersion() const noexcept;

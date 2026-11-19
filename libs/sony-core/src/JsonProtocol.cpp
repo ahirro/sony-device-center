@@ -75,6 +75,7 @@ Json JsonProtocol::execute(const Json& request, IDeviceService& service) {
             data = snapshot(service);
         } else if (method == "disconnect") { service.disconnect(); data = snapshot(service); }
         else {
+            service.wake();
             auto* dev = service.activeDevice();
             if (!dev || !service.isConnected()) throw SonyException(SonyErrorCode::Disconnected, "Headphones are disconnected; wait for reconnection");
             const auto& c = dev->capabilities();

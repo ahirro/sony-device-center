@@ -69,6 +69,12 @@ struct DeviceCapabilities
     bool wearSensor = false;
 
     bool multipoint = false;
+
+    // The headset accepts only one control (RFCOMM/MDR) client at a time, so a
+    // phone app and this program cannot both hold it. The service releases the
+    // channel when idle and reconnects on the next command. WH-1000XM4C: Sound
+    // Connect connected as soon as Device Center was closed.
+    bool singleControlClient = false;
 };
 
 struct DeviceProfile

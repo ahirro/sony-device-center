@@ -2,13 +2,21 @@
 #include "sony/protocol/DeviceProfileRegistry.h"
 #include "sony/transport/Logger.h"
 #include <algorithm>
+#include <cstdlib>
 
 namespace sony::core {
 
 DeviceService::DeviceService(
     std::shared_ptr<transport::ITransport> transport,
     std::shared_ptr<transport::IDeviceDiscovery> discovery, Now now)
-    : _transport(std::move(transport)), _discovery(std::move(discovery)), _now(std::move(now)) {}
+    : _transport(std::move(transport)), _discovery(std::move(discovery)), _now(std::move(now)) {
+    // SONY_IDLE_RELEASE_SECONDS=0 turns idle release off; default 15 s.
+    if (const char* v = std::getenv("SONY_IDLE_RELEASE_SECONDS")) {
+        char* end = nullptr;
+        const long secs = std::strtol(v, &end, 10);
+        if (end != v && secs >= 0 && secs <= 86400) _idleRelease = std::chrono::seconds(secs);
+    }
+}
 
 DeviceService::~DeviceService() {
     disconnect();
@@ -39,7 +47,7 @@ std::vector<DiscoveredDevice> DeviceService::discoverDevices() {
 
 void DeviceService::connect(const transport::DeviceAddress& address, std::string_view name) {
     std::lock_guard lock(_mutex);
-    _target = address.str(); _automatic = true; _retrySeconds = 1;
+    _target = address.str(); _automatic = true; _retrySeconds = 1; _released = false;
     try { _connect(address, name); }
     catch (const std::exception& ex) {
         _wasConnected = false;
@@ -50,7 +58,7 @@ void DeviceService::connect(const transport::DeviceAddress& address, std::string
 }
 
 void DeviceService::_connect(const transport::DeviceAddress& address, std::string_view name) {
-    _selected = address.str(); _connectionState = "connecting";
+    _selected = address.str(); _selectedName = std::string(name); _connectionState = "connecting";
     if (!_device) {
         // The version passed here is provisional; SonyDevice::connect() resolves
         // it from the device profile. Start from V1 so that a failure to resolve
@@ -59,7 +67,8 @@ void DeviceService::_connect(const transport::DeviceAddress& address, std::strin
     }
     _device->connect(address, name);
     if (!_device->isConnected()) throw SonyException(SonyErrorCode::Disconnected, "Bluetooth link closed during initialization");
-    _wasConnected = true; _connectionState = "connected"; _lastError.clear(); _retrySeconds = 1;
+    _wasConnected = true; _released = false; _lastActivity = _now();
+    _connectionState = "connected"; _lastError.clear(); _retrySeconds = 1;
     _nextSettings = _now() + std::chrono::seconds(5);
     _nextBattery = _now() + std::chrono::seconds(30);
     Logger::info(LogCategory::Device, "Connected to " + std::string(name));
@@ -67,7 +76,7 @@ void DeviceService::_connect(const transport::DeviceAddress& address, std::strin
 
 void DeviceService::disconnect() noexcept {
     std::lock_guard lock(_mutex);
-    _automatic = false; _wasConnected = false; _connectionState = "manually_disconnected";
+    _automatic = false; _wasConnected = false; _released = false; _connectionState = "manually_disconnected";
     if (_device) {
         _device->disconnect();
     }
@@ -81,7 +90,9 @@ void DeviceService::cancelPending() noexcept {
 
 bool DeviceService::isConnected() const noexcept {
     std::lock_guard lock(_mutex);
-    return _device && _device->isConnected();
+    // An idle-released session still counts as connected: the link is only
+    // parked so another client can use it, and wake() reopens it on demand.
+    return _released || (_device && _device->isConnected());
 }
 
 SonyDevice* DeviceService::activeDevice() noexcept {
@@ -99,7 +110,7 @@ protocol::DeviceStateSnapshot DeviceService::snapshot() const {
 
 void DeviceService::startAutoConnect(std::string address) {
     std::lock_guard lock(_mutex);
-    _target = std::move(address); _automatic = true; _retrySeconds = 1;
+    _target = std::move(address); _automatic = true; _retrySeconds = 1; _released = false;
     _nextAttempt = _now(); _connectionState = "searching";
 }
 std::string DeviceService::connectionState() const {
@@ -108,9 +119,33 @@ std::string DeviceService::connectionState() const {
 }
 std::string DeviceService::selectedAddress() const { std::lock_guard lock(_mutex); return _selected; }
 std::string DeviceService::lastError() const { std::lock_guard lock(_mutex); return _lastError; }
+void DeviceService::wake() {
+    std::lock_guard lock(_mutex);
+    _lastActivity = _now();
+    if (!_released) return;
+    try {
+        _connect(transport::DeviceAddress(_selected), _selectedName);
+    } catch (const std::exception& ex) {
+        // Typically another client (e.g. Sound Connect on a phone) holds the channel.
+        if (_device) _device->release();
+        _released = true; _connectionState = "idle";
+        _lastError = std::string("Headset control channel is busy (another app may be using it): ") + ex.what();
+        throw SonyException(SonyErrorCode::Disconnected, _lastError);
+    }
+    Logger::info(LogCategory::Device, "Control channel reopened after idle release");
+}
+
 void DeviceService::tick() {
     std::lock_guard lock(_mutex);
+    if (_released) return;  // channel intentionally parked; wake() reopens it
     if (isConnected()) {
+        if (_idleRelease.count() > 0 && _device && _device->capabilities().singleControlClient &&
+            _now() - _lastActivity >= _idleRelease) {
+            _device->release();
+            _released = true; _wasConnected = false; _connectionState = "idle";
+            Logger::info(LogCategory::Device, "Control channel released after idle (single-client headset)");
+            return;
+        }
         if (_now() >= _nextSettings) {
             // One inquiry per tick keeps maintenance from monopolizing requests.
             _device->refreshSettingsStep();

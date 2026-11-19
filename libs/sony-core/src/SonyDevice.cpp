@@ -78,6 +78,11 @@ void SonyDevice::connect(const transport::DeviceAddress& address, std::string_vi
     });
 }
 
+void SonyDevice::release() noexcept {
+    if (_session) _session->disconnect();
+    if (_transport && _transport->isConnected()) _transport->disconnect();
+}
+
 void SonyDevice::disconnect() noexcept {
     if (_session) {
         _session->disconnect();

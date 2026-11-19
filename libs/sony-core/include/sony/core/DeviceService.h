@@ -19,6 +19,7 @@ public:
     ~DeviceService() override;
 
     void tick() override;
+    void wake() override;
     void startAutoConnect(std::string address = {}) override;
     std::string connectionState() const override;
     std::string selectedAddress() const override;
@@ -40,6 +41,11 @@ private:
     Now _now;
     bool _automatic{false};
     bool _wasConnected{false};
+    // Idle release (single-control-client headsets only). 0 disables it.
+    std::chrono::seconds _idleRelease{15};
+    bool _released{false};
+    Clock::time_point _lastActivity{};
+    std::string _selectedName;
     unsigned _retrySeconds{1};
     Clock::time_point _nextAttempt{}, _nextSettings{}, _nextBattery{};
     std::string _target, _selected, _connectionState{"disconnected"}, _lastError;

@@ -22,6 +22,9 @@ public:
     virtual ~IDeviceService() = default;
 
     virtual void tick() {}
+    // Called before every command: reconnect if the control channel was released
+    // while idle, and mark the service as in use. Throws if the headset is busy.
+    virtual void wake() {}
     virtual void startAutoConnect(std::string address = {}) {}
     virtual std::string connectionState() const { return isConnected() ? "connected" : "disconnected"; }
     virtual std::string selectedAddress() const { return {}; }

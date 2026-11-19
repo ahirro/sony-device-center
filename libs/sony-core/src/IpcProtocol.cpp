@@ -156,6 +156,10 @@ IpcResponse IpcProtocol::execute(const IpcCommand& cmd, IDeviceService& service)
         return resp;
     }
 
+    if (cmd.type != IpcCommandType::Status) {
+        try { service.wake(); }
+        catch (const std::exception& ex) { resp.success = false; resp.message = ex.what(); return resp; }
+    }
     auto* dev = service.activeDevice();
     if (cmd.type == IpcCommandType::Status) {
         resp.success = service.isConnected();
