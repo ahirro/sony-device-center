@@ -404,8 +404,7 @@ IpcResponse IpcProtocol::execute(const IpcCommand& cmd, IDeviceService& service)
             std::ostringstream oss;
             oss << "ACKed; " << frames.size() << " frame(s) received";
             for (const auto& f : frames) {
-                oss << "
-  type=" << static_cast<int>(f.type) << " seq=" << static_cast<int>(f.sequence)
+                oss << "\n  type=" << static_cast<int>(f.type) << " seq=" << static_cast<int>(f.sequence)
                     << " payload=" << hex(f.payload);
             }
             resp.success = true;
