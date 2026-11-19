@@ -68,7 +68,10 @@ const std::vector<DeviceProfile>& getStaticProfiles() {
         },
         // WH-1000XM4C (V2 protocol; Sound Connect reports "v2 Protocol", FW 1.1.2).
         // NOT the same as the WH-1000XM4 (V1). Capabilities start from the XM5
-        // set minus features the XM4 hardware lacks; trim after hardware tests.
+        // set minus features the XM4C lacks (Speak-to-Chat, Adaptive Volume: absent in
+        // Sound Connect). DSEE Extreme uses e6/e8 01. Auto power-off has only two
+        // values on this model (28 05 10 00 = on removal, 11 00 = never), which the
+        // six-step GUI control cannot express, so it stays off.
         DeviceProfile{
             .model = SonyModel::WH1000XM4C,
             .protocol = SonyProtocolVersion::V2,
@@ -82,10 +85,10 @@ const std::vector<DeviceProfile>& getStaticProfiles() {
                 .clearBass = false,
                 .tenBandEqualizer = true,
                 .noiseControlLayout = NoiseControlLayout::Wh1000Xm4C,
-                .dsee = false,
+                .dsee = true,
                 .speakToChat = false,
                 .adaptiveVolume = false,
-                .autoPowerOff = true,
+                .autoPowerOff = false,
                 .firmwareInfo = true,
                 .codecInfo = true,
                 .wearSensor = false,

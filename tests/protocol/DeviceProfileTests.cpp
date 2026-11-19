@@ -177,6 +177,10 @@ TEST_CASE("DeviceProfileRegistry scopes noise layouts to verified models", "[pro
         CHECK(xm4c.capabilities.noiseControlLayout == NoiseControlLayout::Wh1000Xm4C);
         CHECK(xm4c.capabilities.tenBandEqualizer);
         CHECK_FALSE(xm4c.capabilities.clearBass);
+        CHECK(xm4c.capabilities.dsee);
+        CHECK_FALSE(xm4c.capabilities.speakToChat);
+        CHECK_FALSE(xm4c.capabilities.adaptiveVolume);
+        CHECK_FALSE(xm4c.capabilities.autoPowerOff);
     }
     for (auto name : {"WH-1000XM4", "WH-1000XM5", "WF-1000XM5", "Unknown"})
         CHECK(DeviceProfileRegistry::getProfileForDevice(name).capabilities.noiseControlLayout == NoiseControlLayout::Standard);
