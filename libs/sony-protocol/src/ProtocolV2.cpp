@@ -124,11 +124,12 @@ void ProtocolV2::setNoiseControl(const NoiseControlState& state) {
         level
     };
 
-    if (_noiseControlLayout == NoiseControlLayout::Wf1000Xm4) {
+    if (_noiseControlLayout == NoiseControlLayout::Wf1000Xm4 ||
+        _noiseControlLayout == NoiseControlLayout::Wh1000Xm4C) {
         // Read before writing: byte 5 is the headset's wind setting. Preserve
         // it exactly, including non-default values; never invent one on failure.
         const auto current = _queryNoiseControl();
-        payload[1] = 0x15;
+        payload[1] = static_cast<uint8_t>(_noiseControlLayout);
         payload.insert(payload.begin() + 5, current.payload[5]);
     }
     _session.send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });

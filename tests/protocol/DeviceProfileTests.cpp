@@ -172,6 +172,12 @@ TEST_CASE("Equalizer preset lookup is case-insensitive and accepts aliases", "[p
 TEST_CASE("DeviceProfileRegistry scopes noise layouts to verified models", "[protocol][profile]") {
     CHECK(DeviceProfileRegistry::getProfileForDevice("WF-1000XM4").capabilities.noiseControlLayout == NoiseControlLayout::Wf1000Xm4);
     CHECK(DeviceProfileRegistry::getProfileForDevice("WH-1000XM6").capabilities.noiseControlLayout == NoiseControlLayout::Wh1000Xm6);
+    {
+        const auto xm4c = DeviceProfileRegistry::getProfileForDevice("WH-1000XM4C");
+        CHECK(xm4c.capabilities.noiseControlLayout == NoiseControlLayout::Wh1000Xm4C);
+        CHECK(xm4c.capabilities.tenBandEqualizer);
+        CHECK_FALSE(xm4c.capabilities.clearBass);
+    }
     for (auto name : {"WH-1000XM4", "WH-1000XM5", "WF-1000XM5", "Unknown"})
         CHECK(DeviceProfileRegistry::getProfileForDevice(name).capabilities.noiseControlLayout == NoiseControlLayout::Standard);
 }

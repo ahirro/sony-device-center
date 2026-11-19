@@ -8,9 +8,9 @@ namespace sony::protocol::detail {
 inline std::optional<NoiseControlState> decodeNoiseControl(std::span<const uint8_t> p) {
     if (p.size() < 7 || (p[0] != 0x67 && p[0] != 0x69) || p[2] != 1) return {};
     size_t voice = 5, level = 6;
-    if (p[1] == 0x15) {
+    if (p[1] == 0x15 || p[1] == 0x16) {
         if (p.size() != 8) return {};
-        voice = 6; level = 7; // byte 5 is wind control, not voice focus
+        voice = 6; level = 7; // byte 5 is wind control (0x15) / an opaque device byte (0x16), not voice focus
         if (p[3] > 1 || p[4] > 1 || p[voice] > 1 || p[level] > 20) return {};
     } else if (p[1] != 0x17 && p[1] != 0x19) return {};
     NoiseControlState result;

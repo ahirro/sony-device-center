@@ -320,3 +320,58 @@ TEST_CASE("ProtocolV2: WF-1000XM4 collects TWS records after an aggregate reply"
         CHECK_FALSE(state.caseBattery);
     }
 }
+
+// WH-1000XM4C: GET 66 16 -> 67 16 01 <effect> <type> <opaque> <voice> <level>.
+// Layout captured from hardware (FW 1.1.2): NC = 1,0; Ambient = 1,1; Off = 0,0; opaque byte = 02.
+TEST_CASE("ProtocolV2: WH-1000XM4C reads type 0x16 and preserves the opaque byte on write", "[protocol][v2][wh-xm4c]") {
+    SECTION("Readback maps hardware captures to modes") {
+        struct Case { uint8_t effect, type; NoiseControlMode mode; int level; };
+        for (auto c : {Case{1,0,NoiseControlMode::NoiseCancelling,0},
+                       Case{1,1,NoiseControlMode::Ambient,20},
+                       Case{0,0,NoiseControlMode::Off,0}}) {
+            ReplyingFakeTransport fake;
+            SonyProtocolSession session(&fake);
+            session.connect("11:22:33:44:55:66");
+            ProtocolV2 v2(session, true, NoiseControlLayout::Wh1000Xm4C);
+            fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0},
+                SonyFrame{.type=DataType::DataMdr, .sequence=1, .payload={0x67,0x16,1,c.effect,c.type,2,0,20}}});
+            const auto nc = v2.getNoiseControl();
+            CHECK(nc.mode == c.mode);
+            CHECK(nc.ambientLevel == c.level);
+            CHECK_FALSE(nc.focusOnVoice);
+            const auto sent = FrameCodec::decode(fake.sentFrames().front());
+            CHECK(sent.payload == std::vector<uint8_t>{0x66, 0x16});
+        }
+    }
+    SECTION("SET reads first and echoes the opaque byte") {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV2 v2(session, true, NoiseControlLayout::Wh1000Xm4C);
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0},
+            SonyFrame{.type=DataType::DataMdr, .sequence=1, .payload={0x67,0x16,1,1,0,2,0,20}}});
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=1}});
+        v2.setNoiseControl({.mode=NoiseControlMode::Ambient, .ambientLevel=10, .focusOnVoice=false});
+        std::vector<std::vector<uint8_t>> requests;
+        for (const auto& raw : fake.sentFrames()) {
+            const auto frame = FrameCodec::decode(raw);
+            if (frame.type == DataType::DataMdr) requests.push_back(frame.payload);
+        }
+        REQUIRE(requests.size() == 2);
+        CHECK(requests[0] == std::vector<uint8_t>{0x66, 0x16});
+        CHECK(requests[1] == std::vector<uint8_t>{0x68, 0x16, 1, 1, 1, 2, 0, 10});
+    }
+    SECTION("Truncated readback prevents SET") {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV2 v2(session, true, NoiseControlLayout::Wh1000Xm4C);
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0},
+            SonyFrame{.type=DataType::DataMdr, .sequence=1, .payload={0x67,0x16,1,1,0,2,0}}});
+        CHECK_THROWS_AS(v2.setNoiseControl({.mode=NoiseControlMode::Off}), SonyException);
+        for (const auto& raw : fake.sentFrames()) {
+            const auto frame = FrameCodec::decode(raw);
+            if (!frame.payload.empty()) CHECK(frame.payload[0] != 0x68);
+        }
+    }
+}

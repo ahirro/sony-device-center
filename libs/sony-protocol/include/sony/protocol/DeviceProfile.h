@@ -32,7 +32,7 @@ enum class SonyModel
     LinkBudsS
 };
 
-enum class NoiseControlLayout : uint8_t { Standard = 0x17, Wf1000Xm4 = 0x15, Wh1000Xm6 = 0x19 };
+enum class NoiseControlLayout : uint8_t { Standard = 0x17, Wf1000Xm4 = 0x15, Wh1000Xm4C = 0x16, Wh1000Xm6 = 0x19 };
 
 struct DeviceCapabilities
 {
