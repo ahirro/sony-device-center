@@ -178,7 +178,8 @@ TEST_CASE("DeviceProfileRegistry scopes noise layouts to verified models", "[pro
         CHECK(xm4c.capabilities.tenBandEqualizer);
         CHECK_FALSE(xm4c.capabilities.clearBass);
         CHECK(xm4c.capabilities.dsee);
-        CHECK_FALSE(xm4c.capabilities.speakToChat);
+        CHECK(xm4c.capabilities.speakToChat);
+        CHECK(xm4c.capabilities.speakToChatSubtype == 0x02);
         CHECK_FALSE(xm4c.capabilities.adaptiveVolume);
         CHECK_FALSE(xm4c.capabilities.autoPowerOff);
     }

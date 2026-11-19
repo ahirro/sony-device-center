@@ -27,9 +27,11 @@ int apoIndexFromCode(uint8_t c0, uint8_t c1) {
 
 } // namespace
 
-ProtocolV2::ProtocolV2(SonyProtocolSession& session, bool tenBandEqualizer, NoiseControlLayout noiseControlLayout, bool detailedBattery)
+ProtocolV2::ProtocolV2(SonyProtocolSession& session, bool tenBandEqualizer, NoiseControlLayout noiseControlLayout, bool detailedBattery,
+                       uint8_t speakToChatSubtype)
     : _session(session), _tenBandEqualizer(tenBandEqualizer),
-      _noiseControlLayout(noiseControlLayout), _detailedBattery(detailedBattery) {}
+      _noiseControlLayout(noiseControlLayout), _detailedBattery(detailedBattery),
+      _speakToChatSubtype(speakToChatSubtype) {}
 
 void ProtocolV2::initDevice() {
     // V2 handshake init: 0x00 0x00 -> RET 0x01
@@ -296,11 +298,11 @@ void ProtocolV2::setAutoPowerOff(int index) {
 }
 
 bool ProtocolV2::getSpeakToChat() {
-    // GET: f6 0c -> RET: f7 0c <inverted_enabled>
+    // GET: f6 <subtype> -> RET: f7 <subtype> <inverted_enabled>
     auto resp = _session.sendAndAwaitResponse(
-        SonyFrame{ .type = DataType::DataMdr, .payload = {0xf6, 0x0c} },
+        SonyFrame{ .type = DataType::DataMdr, .payload = {0xf6, _speakToChatSubtype} },
         0xf7,
-        0x0c,
+        _speakToChatSubtype,
         std::chrono::milliseconds(1000)
     );
     if (resp.payload.size() >= 3) {
@@ -310,14 +312,33 @@ bool ProtocolV2::getSpeakToChat() {
 }
 
 void ProtocolV2::setSpeakToChat(bool enabled) {
-    // SET: f8 0c <inverted_enabled> 01
+    // SET: f8 <subtype> <inverted_enabled> 01
+    // The WH-1000XM4C (subtype 0x02) also needs its configuration written on
+    // enable: Sound Connect sends fc 02 <sensitivity> <focus-voice, 0 = on> <timeout>
+    // right after f8. The current values are read back (fa 02 -> fb 02 ...) and
+    // echoed so a user's saved choices survive; defaults are auto / off / 15 s.
+    uint8_t config[3] = {0x00, 0x01, 0x01};
+    if (enabled && _speakToChatSubtype == 0x02) {
+        try {
+            auto cur = _session.sendAndAwaitResponse(
+                SonyFrame{ .type = DataType::DataMdr, .payload = {0xfa, 0x02} },
+                0xfb, 0x02, std::chrono::milliseconds(1000));
+            if (cur.payload.size() == 5 && cur.payload[2] <= 2 && cur.payload[3] <= 1 && cur.payload[4] <= 3) {
+                config[0] = cur.payload[2]; config[1] = cur.payload[3]; config[2] = cur.payload[4];
+            }
+        } catch (const SonyException&) {}
+    }
     std::vector<uint8_t> payload = {
         0xf8,
-        0x0c,
+        _speakToChatSubtype,
         static_cast<uint8_t>(enabled ? 0x00 : 0x01),
         0x01
     };
     _session.send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });
+    if (enabled && _speakToChatSubtype == 0x02) {
+        _session.send(SonyFrame{ .type = DataType::DataMdr,
+                                 .payload = {0xfc, 0x02, config[0], config[1], config[2]} });
+    }
 }
 
 bool ProtocolV2::getAdaptiveVolume() {

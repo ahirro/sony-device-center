@@ -56,6 +56,9 @@ struct DeviceCapabilities
     bool dsee = false;
 
     bool speakToChat = false;
+    // Subtype byte of the Speak-to-Chat commands (f6/f8/fc <subtype>). 0x0c on
+    // the WH-1000XM5 family; 0x02 on the WH-1000XM4C (Sound Connect capture).
+    uint8_t speakToChatSubtype = 0x0c;
     bool adaptiveVolume = false;
 
     bool autoPowerOff = false;

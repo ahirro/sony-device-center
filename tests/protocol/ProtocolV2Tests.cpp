@@ -375,3 +375,55 @@ TEST_CASE("ProtocolV2: WH-1000XM4C reads type 0x16 and preserves the opaque byte
         }
     }
 }
+
+// WH-1000XM4C Speak-to-Chat (Sound Connect capture, FW 1.1.2):
+// GET f6 02 -> f7 02 <inverted enable>; SET f8 02 <inverted enable> 01;
+// config fc 02 <sensitivity 0 auto/1 high/2 low> <focus voice, 0 = on> <timeout 0/1/2/3>.
+TEST_CASE("ProtocolV2: WH-1000XM4C Speak-to-Chat uses subtype 0x02 and echoes its config", "[protocol][v2][wh-xm4c]") {
+    SECTION("GET reads f6 02 and the inverted enable bit") {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV2 v2(session, true, NoiseControlLayout::Wh1000Xm4C, false, 0x02);
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0},
+            SonyFrame{.type=DataType::DataMdr, .sequence=1, .payload={0xf7,0x02,0x00,0x01}}});
+        CHECK(v2.getSpeakToChat());
+        const auto sent = FrameCodec::decode(fake.sentFrames().front());
+        CHECK(sent.payload == std::vector<uint8_t>{0xf6, 0x02});
+    }
+    SECTION("Enable reads the saved config, sends f8 then echoes it in fc") {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV2 v2(session, true, NoiseControlLayout::Wh1000Xm4C, false, 0x02);
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0},
+            SonyFrame{.type=DataType::DataMdr, .sequence=1, .payload={0xfb,0x02,0x01,0x00,0x02}}});
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=1}});
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0}});
+        v2.setSpeakToChat(true);
+        std::vector<std::vector<uint8_t>> requests;
+        for (const auto& raw : fake.sentFrames()) {
+            const auto frame = FrameCodec::decode(raw);
+            if (frame.type == DataType::DataMdr) requests.push_back(frame.payload);
+        }
+        REQUIRE(requests.size() == 3);
+        CHECK(requests[0] == std::vector<uint8_t>{0xfa, 0x02});
+        CHECK(requests[1] == std::vector<uint8_t>{0xf8, 0x02, 0x00, 0x01});
+        CHECK(requests[2] == std::vector<uint8_t>{0xfc, 0x02, 0x01, 0x00, 0x02});
+    }
+    SECTION("Disable sends only f8 02 01 01") {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV2 v2(session, true, NoiseControlLayout::Wh1000Xm4C, false, 0x02);
+        fake.queueReply({SonyFrame{.type=DataType::Ack, .sequence=0}});
+        v2.setSpeakToChat(false);
+        std::vector<std::vector<uint8_t>> requests;
+        for (const auto& raw : fake.sentFrames()) {
+            const auto frame = FrameCodec::decode(raw);
+            if (frame.type == DataType::DataMdr) requests.push_back(frame.payload);
+        }
+        REQUIRE(requests.size() == 1);
+        CHECK(requests[0] == std::vector<uint8_t>{0xf8, 0x02, 0x01, 0x01});
+    }
+}

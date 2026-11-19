@@ -137,7 +137,8 @@ void SonyDevice::_setupSession() {
     } else {
         _protocol = std::make_unique<protocol::ProtocolV2>(*_session, _capabilities.tenBandEqualizer,
                                                            _capabilities.noiseControlLayout,
-            _profile.model == protocol::SonyModel::WF1000XM4);
+            _profile.model == protocol::SonyModel::WF1000XM4,
+                                                           _capabilities.speakToChatSubtype);
     }
 
     _session->onNotification([this](const protocol::SonyFrame& frame) {
