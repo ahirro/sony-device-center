@@ -66,6 +66,31 @@ const std::vector<DeviceProfile>& getStaticProfiles() {
                 .multipoint = true
             }
         },
+        // WH-1000XM4C (V2 protocol; Sound Connect reports "v2 Protocol", FW 1.1.2).
+        // NOT the same as the WH-1000XM4 (V1). Capabilities start from the XM5
+        // set minus features the XM4 hardware lacks; trim after hardware tests.
+        DeviceProfile{
+            .model = SonyModel::WH1000XM4C,
+            .protocol = SonyProtocolVersion::V2,
+            .capabilities = DeviceCapabilities{
+                .battery = true,
+                .dualBattery = false,
+                .noiseCancelling = true,
+                .ambientSound = true,
+                .focusOnVoice = true,
+                .equalizer = true,
+                .clearBass = true,
+                .tenBandEqualizer = false,
+                .dsee = false,
+                .speakToChat = false,
+                .adaptiveVolume = false,
+                .autoPowerOff = false,
+                .firmwareInfo = true,
+                .codecInfo = true,
+                .wearSensor = false,
+                .multipoint = false
+            }
+        },
         // WH-1000XM5 (V2 protocol, Full capability set)
         DeviceProfile{
             .model = SonyModel::WH1000XM5,
@@ -269,6 +294,10 @@ SonyModel DeviceProfileRegistry::identifyModel(std::string_view deviceName) noex
 
     if (upper.find("WH-1000XM3") != std::string::npos || upper.find("WH1000XM3") != std::string::npos) {
         return SonyModel::WH1000XM3;
+    }
+    // Must precede the plain XM4 check: "WH-1000XM4C" contains "WH-1000XM4".
+    if (upper.find("WH-1000XM4C") != std::string::npos || upper.find("WH1000XM4C") != std::string::npos) {
+        return SonyModel::WH1000XM4C;
     }
     if (upper.find("WH-1000XM4") != std::string::npos || upper.find("WH1000XM4") != std::string::npos) {
         return SonyModel::WH1000XM4;

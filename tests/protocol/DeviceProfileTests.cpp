@@ -9,7 +9,8 @@ TEST_CASE("DeviceProfileRegistry: identifies model from advertised device names"
     REQUIRE(DeviceProfileRegistry::identifyModel("Sony WH-1000XM3") == SonyModel::WH1000XM3);
 
     REQUIRE(DeviceProfileRegistry::identifyModel("WH-1000XM4") == SonyModel::WH1000XM4);
-    REQUIRE(DeviceProfileRegistry::identifyModel("WH-1000XM4C") == SonyModel::WH1000XM4);
+    REQUIRE(DeviceProfileRegistry::identifyModel("WH-1000XM4C") == SonyModel::WH1000XM4C);
+    REQUIRE(DeviceProfileRegistry::identifyModel("LE_WH-1000XM4C") == SonyModel::WH1000XM4C);
     REQUIRE(DeviceProfileRegistry::identifyModel("LE_WH-1000XM4") == SonyModel::WH1000XM4);
     REQUIRE(DeviceProfileRegistry::identifyModel("wh-1000xm4") == SonyModel::WH1000XM4);
 
@@ -119,6 +120,7 @@ TEST_CASE("DeviceProfileRegistry: handles unknown devices with fallback profile"
 TEST_CASE("DeviceProfileRegistry: string conversions", "[protocol][profile]")
 {
     REQUIRE(to_string(SonyModel::WH1000XM4) == "WH-1000XM4");
+    REQUIRE(to_string(SonyModel::WH1000XM4C) == "WH-1000XM4C");
     REQUIRE(to_string(SonyModel::WH1000XM5) == "WH-1000XM5");
     REQUIRE(to_string(SonyModel::WHCH720N) == "WH-CH720N");
     REQUIRE(to_string(SonyModel::Unknown) == "Unknown");

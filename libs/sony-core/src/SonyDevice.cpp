@@ -333,6 +333,13 @@ void SonyDevice::setSpeakToChat(bool enabled) {
     _dispatcher.dispatch(protocol::DeviceStateChanged{snapshot()});
 }
 
+std::vector<protocol::SonyFrame> SonyDevice::sendRaw(std::vector<uint8_t> payload) {
+    if (!_session) {
+        throw SonyException(SonyErrorCode::Disconnected, "Not connected");
+    }
+    return _session->sendRawAndCollect(std::move(payload));
+}
+
 void SonyDevice::setAdaptiveVolume(bool enabled) {
     if (!_protocol) return;
     _protocol->setAdaptiveVolume(enabled);

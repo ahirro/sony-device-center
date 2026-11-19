@@ -47,6 +47,12 @@ public:
         int retSubtype = -1,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(2000));
 
+    // Diagnostic: send a raw DATA_MDR payload, wait for the ACK, then collect every
+    // frame the device sends during `window`. Used by `sonyctl raw`.
+    std::vector<SonyFrame> sendRawAndCollect(
+        std::vector<uint8_t> payload,
+        std::chrono::milliseconds window = std::chrono::milliseconds(1500));
+
     // Register a callback for unsolicited notifications
     void onNotification(NotificationCallback callback);
 

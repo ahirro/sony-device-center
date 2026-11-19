@@ -19,6 +19,7 @@ enum class SonyModel
 
     WH1000XM3,
     WH1000XM4,
+    WH1000XM4C,
     WH1000XM5,
     WH1000XM6,
 
@@ -78,6 +79,7 @@ struct DeviceProfile
     switch (model) {
         case SonyModel::WH1000XM3: return "WH-1000XM3";
         case SonyModel::WH1000XM4: return "WH-1000XM4";
+        case SonyModel::WH1000XM4C: return "WH-1000XM4C";
         case SonyModel::WH1000XM5: return "WH-1000XM5";
         case SonyModel::WH1000XM6: return "WH-1000XM6";
         case SonyModel::WF1000XM4: return "WF-1000XM4";

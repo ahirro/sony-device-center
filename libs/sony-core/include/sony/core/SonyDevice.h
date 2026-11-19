@@ -60,6 +60,9 @@ public:
     void setSpeakToChat(bool enabled);
     void setAdaptiveVolume(bool enabled);
 
+    // Diagnostic: send a raw payload and return all frames received afterwards.
+    std::vector<protocol::SonyFrame> sendRaw(std::vector<uint8_t> payload);
+
 private:
     unsigned _refreshStep{0};
     void _markSuccess(const std::string& feature);

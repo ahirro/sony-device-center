@@ -209,6 +209,11 @@ void SonyProtocolSession::_handleDecodedFrame(const SonyFrame& frame) {
         return;
     }
 
+    if (frame.type != DataType::DataMdr) {
+        Logger::debug(LogCategory::Session, "RX  frame type=" + std::to_string(static_cast<int>(frame.type)) +
+                      " seq=" + std::to_string(frame.sequence) + " len=" + std::to_string(frame.payload.size()) + " (ignored)");
+    }
+
     if (frame.type == DataType::DataMdr) {
         Logger::logRx(frame.payload, Logger::describePayload(frame.payload));
 
@@ -277,6 +282,20 @@ void SonyProtocolSession::_handleDecodedFrame(const SonyFrame& frame) {
             }
         }
     }
+}
+
+std::vector<SonyFrame> SonyProtocolSession::sendRawAndCollect(
+    std::vector<uint8_t> payload, std::chrono::milliseconds window) {
+    {
+        std::lock_guard lock(_sessionMtx);
+        _unmatchedFrames.clear();
+    }
+    send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });
+    std::this_thread::sleep_for(window);
+    std::lock_guard lock(_sessionMtx);
+    std::vector<SonyFrame> out(_unmatchedFrames.begin(), _unmatchedFrames.end());
+    _unmatchedFrames.clear();
+    return out;
 }
 
 void SonyProtocolSession::_sendAck(uint8_t seqNumber) {

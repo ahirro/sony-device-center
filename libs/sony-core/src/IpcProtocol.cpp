@@ -3,6 +3,7 @@
 #include "sony/protocol/EqualizerPresets.h"
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
 
 namespace sony::core {
 
@@ -86,6 +87,8 @@ IpcCommand IpcProtocol::parseCommand(std::string_view line) {
         cmd.type = IpcCommandType::AutoPowerOff;
     } else if (verb == "status") {
         cmd.type = IpcCommandType::Status;
+    } else if (verb == "raw") {
+        cmd.type = IpcCommandType::Raw;
     }
 
     if (tokens.size() > 1) {
@@ -361,6 +364,53 @@ IpcResponse IpcProtocol::execute(const IpcCommand& cmd, IDeviceService& service)
             dev->setAutoPowerOff(idx);
             resp.success = true;
             resp.message = "Auto power off set to index " + std::to_string(idx);
+            return resp;
+        }
+
+        case IpcCommandType::Raw: {
+            // Diagnostic: `raw 66 17` sends a DATA_MDR payload (hex bytes) and lists every reply.
+            std::vector<uint8_t> payload;
+            for (const auto& tok : cmd.args) {
+                try {
+                    size_t pos = 0;
+                    int v = std::stoi(tok, &pos, 16);
+                    if (pos != tok.size() || v < 0 || v > 255) throw std::invalid_argument(tok);
+                    payload.push_back(static_cast<uint8_t>(v));
+                } catch (...) {
+                    resp.success = false;
+                    resp.message = "Invalid hex byte: " + tok;
+                    return resp;
+                }
+            }
+            if (payload.empty()) {
+                resp.success = false;
+                resp.message = "Usage: raw <hex bytes>, e.g. raw 66 17";
+                return resp;
+            }
+            if (payload[0] == 0x22 && dev->protocolVersion() == SonyProtocolVersion::V1) {
+                resp.success = false;
+                resp.message = "Refused: opcode 0x22 powers the headset off on V1 devices";
+                return resp;
+            }
+            auto hex = [](const std::vector<uint8_t>& b) {
+                std::ostringstream o;
+                for (size_t i = 0; i < b.size(); ++i) {
+                    static const char* d = "0123456789abcdef";
+                    o << d[b[i] >> 4] << d[b[i] & 15] << (i + 1 < b.size() ? " " : "");
+                }
+                return o.str();
+            };
+            auto frames = dev->sendRaw(std::move(payload));
+            std::ostringstream oss;
+            oss << "ACKed; " << frames.size() << " frame(s) received";
+            for (const auto& f : frames) {
+                oss << "
+  type=" << static_cast<int>(f.type) << " seq=" << static_cast<int>(f.sequence)
+                    << " payload=" << hex(f.payload);
+            }
+            resp.success = true;
+            resp.message = "Raw";
+            resp.data = oss.str();
             return resp;
         }
 
