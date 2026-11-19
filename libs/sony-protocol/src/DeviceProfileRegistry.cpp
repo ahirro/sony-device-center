@@ -85,7 +85,7 @@ const std::vector<DeviceProfile>& getStaticProfiles() {
                 .dsee = false,
                 .speakToChat = false,
                 .adaptiveVolume = false,
-                .autoPowerOff = false,
+                .autoPowerOff = true,
                 .firmwareInfo = true,
                 .codecInfo = true,
                 .wearSensor = false,
