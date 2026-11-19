@@ -54,6 +54,9 @@ private:
     Clock::time_point _nextAttempt{}, _nextSettings{}, _nextBattery{};
     std::string _target, _selected, _connectionState{"disconnected"}, _lastError;
     void _connect(const transport::DeviceAddress& address, std::string_view name);
+    // True once the headset answered at least one request after (re)connecting.
+    // A link that is open but silent means another client owns the control channel.
+    [[nodiscard]] bool _responsive() const;
 
 };
 

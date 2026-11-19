@@ -124,12 +124,22 @@ std::string DeviceService::connectionState() const {
 }
 std::string DeviceService::selectedAddress() const { std::lock_guard lock(_mutex); return _selected; }
 std::string DeviceService::lastError() const { std::lock_guard lock(_mutex); return _lastError; }
+bool DeviceService::_responsive() const {
+    if (!_device) return false;
+    const auto snap = _device->snapshot();
+    for (const auto& [name, status] : snap->features)
+        if (status.availability == "valid") return true;
+    return false;
+}
+
 void DeviceService::wake() {
     std::lock_guard lock(_mutex);
     _lastActivity = _now();
     if (!_released) return;
     try {
         _connect(transport::DeviceAddress(_selected), _selectedName);
+        if (!_responsive())
+            throw SonyException(SonyErrorCode::Timeout, "the headset did not answer after reconnecting");
     } catch (const std::exception& ex) {
         // Typically another client (e.g. Sound Connect on a phone) holds the channel.
         if (_device) _device->release();
@@ -150,6 +160,7 @@ void DeviceService::tick() {
             try {
                 _connect(transport::DeviceAddress(_selected), _selectedName);
                 _device->release();
+                // A silent headset means someone else holds it: nothing was refreshed.
             } catch (const std::exception& ex) {
                 Logger::debug(LogCategory::Device, std::string("Idle peek skipped: ") + ex.what());
                 if (_device) _device->release();
